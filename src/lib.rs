@@ -16,7 +16,10 @@ pub extern "C" fn plaits_new(block_size: usize, sample_rate: f32) -> *mut Synth 
 }
 
 /// # Safety
-/// `ptr` must come from `plaits_new` and must not be used afterwards.
+/// `ptr` must come from `plaits_new` and must not be used afterwards. No
+/// other call taking the same `ptr` (and no reference obtained from a
+/// previous call, such as a pointer returned by `plaits_out_ptr` or
+/// `plaits_aux_ptr`) may be active concurrently with this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn plaits_free(ptr: *mut Synth) {
     if !ptr.is_null() {
@@ -25,28 +28,37 @@ pub unsafe extern "C" fn plaits_free(ptr: *mut Synth) {
 }
 
 /// # Safety
-/// `ptr` must be a live handle from `plaits_new`.
+/// `ptr` must be a live handle from `plaits_new`. No other call taking the
+/// same `ptr` (and no reference obtained from a previous call) may be active
+/// concurrently with this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn plaits_out_ptr(ptr: *mut Synth) -> *mut f32 {
     unsafe { (*ptr).out_ptr() }
 }
 
 /// # Safety
-/// `ptr` must be a live handle from `plaits_new`.
+/// `ptr` must be a live handle from `plaits_new`. No other call taking the
+/// same `ptr` (and no reference obtained from a previous call) may be active
+/// concurrently with this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn plaits_aux_ptr(ptr: *mut Synth) -> *mut f32 {
     unsafe { (*ptr).aux_ptr() }
 }
 
 /// # Safety
-/// `ptr` must be a live handle from `plaits_new`.
+/// `ptr` must be a live handle from `plaits_new`. No other call taking the
+/// same `ptr` (and no reference obtained from a previous call) may be active
+/// concurrently with this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn plaits_set_param(ptr: *mut Synth, id: u32, value: f32) {
     unsafe { (*ptr).set_param(id, value) }
 }
 
 /// # Safety
-/// `ptr` must be a live handle from `plaits_new`.
+/// `ptr` must be a live handle from `plaits_new`. No other call taking the
+/// same `ptr` (and no reference obtained from a previous call, such as a
+/// pointer returned by `plaits_out_ptr` or `plaits_aux_ptr` that is still
+/// being read) may be active concurrently with this call.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn plaits_render(ptr: *mut Synth) {
     unsafe { (*ptr).render() }

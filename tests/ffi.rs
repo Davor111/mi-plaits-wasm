@@ -1,7 +1,9 @@
 //! Exercises the exported C ABI the way JS does.
 
-use mi_plaits_wasm::{params, plaits_aux_ptr, plaits_free, plaits_new, plaits_out_ptr,
-                     plaits_render, plaits_set_param};
+use mi_plaits_wasm::{
+    params, plaits_aux_ptr, plaits_free, plaits_new, plaits_out_ptr, plaits_render,
+    plaits_set_param,
+};
 
 const BLOCK: usize = 128;
 

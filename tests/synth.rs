@@ -30,12 +30,18 @@ fn every_engine_renders_finite_non_silent_audio() {
         for _ in 0..200 {
             s.render();
             for &x in s.out().iter().chain(s.aux().iter()) {
-                assert!(x.is_finite(), "engine {engine} produced a non-finite sample: {x}");
+                assert!(
+                    x.is_finite(),
+                    "engine {engine} produced a non-finite sample: {x}"
+                );
                 peak = peak.max(x.abs());
             }
         }
 
-        assert!(peak > 1e-5, "engine {engine} rendered silence (peak {peak})");
+        assert!(
+            peak > 1e-5,
+            "engine {engine} rendered silence (peak {peak})"
+        );
     }
 }
 
