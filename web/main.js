@@ -22,6 +22,7 @@ let ctx = null;
 let node = null;
 let analyser = null;
 let wasmModule = null;
+let wasmBytes = null;
 
 const status = (text) => { document.getElementById('status').textContent = text; };
 
@@ -29,6 +30,7 @@ async function start() {
   if (ctx) return;
 
   const bytes = await (await fetch('plaits.wasm')).arrayBuffer();
+  wasmBytes = bytes;
   wasmModule = await WebAssembly.compile(bytes);
 
   // The library's DSP is written for 48 kHz; other rates sound different.
@@ -51,7 +53,7 @@ async function start() {
       sendAll();
     }
   };
-  node.port.postMessage({ type: 'wasm', module: wasmModule });
+  node.port.postMessage({ type: 'wasm', bytes: wasmBytes });
 
   await ctx.resume();
   requestAnimationFrame(meter);

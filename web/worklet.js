@@ -14,7 +14,8 @@ class PlaitsProcessor extends AudioWorkletProcessor {
   onMessage(msg) {
     switch (msg.type) {
       case 'wasm': {
-        const instance = new WebAssembly.Instance(msg.module, {});
+        const module = new WebAssembly.Module(msg.bytes);
+        const instance = new WebAssembly.Instance(module, {});
         this.x = instance.exports;
         this.memory = this.x.memory;
         this.synth = this.x.plaits_new(BLOCK, sampleRate);
