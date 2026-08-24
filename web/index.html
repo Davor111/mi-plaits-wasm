@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plaits in the browser</title>
+  <style>
+    body { font: 14px system-ui, sans-serif; margin: 2rem; max-width: 40rem; }
+    .row { display: grid; grid-template-columns: 10rem 1fr 3rem; gap: .5rem; align-items: center; margin: .35rem 0; }
+    input[type=range] { width: 100%; }
+    #status { font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Plaits in the browser</h1>
+  <p><button id="start">Start audio</button> <span id="status">stopped</span></p>
+
+  <div class="row"><label for="engine">engine</label><select id="engine" data-param="ENGINE"></select><span></span></div>
+  <div class="row"><label for="note">note</label><input id="note" data-param="NOTE" type="range" min="0" max="96" step="1" value="48"><span id="note-value">48.00</span></div>
+  <div class="row"><label for="harmonics">harmonics</label><input id="harmonics" data-param="HARMONICS" type="range" min="0" max="1" step="0.01" value="0.5"><span id="harmonics-value">0.50</span></div>
+  <div class="row"><label for="timbre">timbre</label><input id="timbre" data-param="TIMBRE" type="range" min="0" max="1" step="0.01" value="0.5"><span id="timbre-value">0.50</span></div>
+  <div class="row"><label for="morph">morph</label><input id="morph" data-param="MORPH" type="range" min="0" max="1" step="0.01" value="0.5"><span id="morph-value">0.50</span></div>
+  <div class="row"><label for="decay">decay</label><input id="decay" data-param="DECAY" type="range" min="0" max="1" step="0.01" value="0.5"><span id="decay-value">0.50</span></div>
+  <div class="row"><label for="lpg">lpg colour</label><input id="lpg" data-param="LPG_COLOUR" type="range" min="0" max="1" step="0.01" value="0.5"><span id="lpg-value">0.50</span></div>
+  <div class="row"><label for="mix">out / aux</label><input id="mix" type="range" min="0" max="1" step="0.01" value="0"><span></span></div>
+
+  <p><button id="trigger">trigger (hold)</button> &nbsp; output RMS: <span id="rms">0.0000</span></p>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
