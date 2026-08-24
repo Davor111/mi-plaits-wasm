@@ -23,47 +23,78 @@ let node = null;
 let analyser = null;
 let wasmModule = null;
 let wasmBytes = null;
+let starting = false;
 
 const status = (text) => { document.getElementById('status').textContent = text; };
 
+// Looks up a param id by name, throwing on an unrecognised `data-param`
+// instead of silently falling through to `undefined` -> `0` -> ENGINE.
+function paramId(name) {
+  const id = PARAMS[name];
+  if (id === undefined) throw new Error(`unknown param "${name}"`);
+  return id;
+}
+
 async function start() {
-  if (ctx) return;
+  // Guarded on `starting`, not `ctx`: `ctx` isn't assigned until the very
+  // end (on success), so a guard keyed on it would let a second click in
+  // while the first is still awaiting, and would wedge shut forever if the
+  // first click throws partway through.
+  if (starting || ctx) return;
+  starting = true;
 
-  const bytes = await (await fetch('plaits.wasm')).arrayBuffer();
-  wasmBytes = bytes;
-  wasmModule = await WebAssembly.compile(bytes);
-
-  // The library's DSP is written for 48 kHz; other rates sound different.
-  ctx = new AudioContext({ sampleRate: 48000 });
-  if (ctx.sampleRate !== 48000) {
-    status(`warning: context is ${ctx.sampleRate} Hz, not 48000`);
-  }
-
-  await ctx.audioWorklet.addModule('worklet.js');
-  node = new AudioWorkletNode(ctx, 'plaits', { outputChannelCount: [2] });
-
-  analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  node.connect(analyser);
-  analyser.connect(ctx.destination);
-
-  node.port.onmessage = (event) => {
-    if (event.data.type === 'ready') {
-      status(`running at ${event.data.sampleRate} Hz`);
-      sendAll();
+  let newCtx;
+  try {
+    const res = await fetch('plaits.wasm');
+    if (!res.ok) {
+      throw new Error(`failed to fetch plaits.wasm: ${res.status} ${res.statusText}`);
     }
-  };
-  node.port.postMessage({ type: 'wasm', bytes: wasmBytes });
+    wasmBytes = await res.arrayBuffer();
 
-  await ctx.resume();
-  requestAnimationFrame(meter);
+    // The library's DSP is written for 48 kHz; other rates sound different.
+    newCtx = new AudioContext({ sampleRate: 48000 });
+    const rateWarning = newCtx.sampleRate !== 48000
+      ? ` (warning: context is ${newCtx.sampleRate} Hz, not 48000)`
+      : '';
+
+    await newCtx.audioWorklet.addModule('worklet.js');
+    const newNode = new AudioWorkletNode(newCtx, 'plaits', { outputChannelCount: [2] });
+
+    const newAnalyser = newCtx.createAnalyser();
+    newAnalyser.fftSize = 2048;
+    newNode.connect(newAnalyser);
+    newAnalyser.connect(newCtx.destination);
+
+    newNode.port.onmessage = (event) => {
+      if (event.data.type === 'ready') {
+        // Folded into the ready message: it fires right after and would
+        // otherwise overwrite a warning printed earlier.
+        status(`running at ${event.data.sampleRate} Hz${rateWarning}`);
+        sendAll();
+      }
+    };
+    newNode.port.postMessage({ type: 'wasm', bytes: wasmBytes });
+
+    await newCtx.resume();
+
+    ctx = newCtx;
+    node = newNode;
+    analyser = newAnalyser;
+
+    requestAnimationFrame(meter);
+  } catch (err) {
+    status(`failed to start: ${err.message}`);
+    if (newCtx) newCtx.close().catch(() => {});
+  } finally {
+    starting = false;
+  }
 }
 
 const send = (id, value) => node && node.port.postMessage({ type: 'param', id, value });
 
 function sendAll() {
   for (const input of document.querySelectorAll('[data-param]')) {
-    send(PARAMS[input.dataset.param], Number(input.value));
+    send(paramId(input.dataset.param), Number(input.value));
   }
   node.port.postMessage({ type: 'mix', value: Number(document.getElementById('mix').value) });
   // Use the internal envelope + level so the demo is audible without a gate.
@@ -98,7 +129,7 @@ function buildUi() {
 
   for (const input of document.querySelectorAll('[data-param]')) {
     input.addEventListener('input', () => {
-      send(PARAMS[input.dataset.param], Number(input.value));
+      send(paramId(input.dataset.param), Number(input.value));
       const readout = document.getElementById(`${input.id}-value`);
       if (readout) readout.textContent = Number(input.value).toFixed(2);
     });
@@ -108,8 +139,17 @@ function buildUi() {
     node && node.port.postMessage({ type: 'mix', value: Number(e.target.value) });
   });
 
-  document.getElementById('trigger').addEventListener('pointerdown', () => send(PARAMS.MOD_TRIGGER, 1));
-  document.getElementById('trigger').addEventListener('pointerup', () => send(PARAMS.MOD_TRIGGER, 0));
+  const trigger = document.getElementById('trigger');
+  const releaseTrigger = () => send(PARAMS.MOD_TRIGGER, 0);
+  trigger.addEventListener('pointerdown', (e) => {
+    // Captures the pointer so a drag off the button still routes pointerup
+    // (and friends) here, instead of leaving the trigger stuck on.
+    trigger.setPointerCapture(e.pointerId);
+    send(PARAMS.MOD_TRIGGER, 1);
+  });
+  trigger.addEventListener('pointerup', releaseTrigger);
+  trigger.addEventListener('pointercancel', releaseTrigger);
+  trigger.addEventListener('pointerleave', releaseTrigger);
   document.getElementById('start').addEventListener('click', start);
 
   document.getElementById('bench').addEventListener('click', async () => {

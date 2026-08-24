@@ -39,8 +39,10 @@ class PlaitsProcessor extends AudioWorkletProcessor {
 
   // A Float32Array over wasm memory detaches if the memory ever grows, and
   // indexed reads on a detached view return undefined, producing NaN samples
-  // rather than throwing. Everything is allocated up front so this should
-  // never fire, but the check is cheap.
+  // rather than throwing. Growth can only happen inside plaits_render, so
+  // this must be called AFTER render and before the views are read (the
+  // sample-copy loop in process()) to actually guard anything. Everything is
+  // allocated up front so this should never fire, but the check is cheap.
   refreshViews() {
     if (this.cachedBuffer !== this.memory.buffer) {
       this.cachedBuffer = this.memory.buffer;
@@ -58,8 +60,8 @@ class PlaitsProcessor extends AudioWorkletProcessor {
       return true;
     }
 
-    this.refreshViews();
     this.x.plaits_render(this.synth);
+    this.refreshViews();
 
     const out = this.outView;
     const aux = this.auxView;
