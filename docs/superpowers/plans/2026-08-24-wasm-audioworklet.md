@@ -4,7 +4,7 @@
 
 **Goal:** Run one `mi_plaits_dsp::voice::Voice` in a browser AudioWorklet at 48 kHz, controllable from a demo page, with per-engine wasm timing measurements.
 
-**Architecture:** A `cdylib` wrapper crate exposes a raw `extern "C"` surface over wasm linear memory — an opaque `Synth` handle, an id-based parameter setter, and a render call that fills two buffers JS reads directly. The demo page compiles the module on the main thread and `postMessage`s it into an AudioWorklet, which instantiates it synchronously and calls render once per 128-frame quantum.
+**Architecture:** A `cdylib` wrapper crate exposes a raw `extern "C"` surface over wasm linear memory — an opaque `Synth` handle, an id-based parameter setter, and a render call that fills two buffers JS reads directly. The demo page fetches the wasm bytes and `postMessage`s them (as an `ArrayBuffer`, not a compiled `Module` — see Task 4) into an AudioWorklet, which compiles and instantiates them synchronously and calls render once per 128-frame quantum.
 
 **Tech Stack:** Rust (edition 2024), `wasm32-unknown-unknown`, no `wasm-bindgen`, Web Audio API AudioWorklet, plain ES modules.
 
@@ -744,6 +744,19 @@ git commit -m "feat: C ABI exports and wasm build script"
 **Interfaces:**
 - Consumes: the wasm exports from Task 3, and `web/plaits.wasm` produced by `build.sh`
 - Produces: a page served from `web/` that plays audio; `main.js` exports nothing but defines the `PARAMS` id table mirroring `src/params.rs`
+
+> **Correction (post-implementation):** the `postMessage`d payload in Step 1/2
+> below, as originally planned, is a compiled `WebAssembly.Module` sent from
+> `main.js` to the worklet. That does not work: Chromium silently drops a
+> `postMessage` whose payload contains a `WebAssembly.Module` when the target
+> is an `AudioWorkletProcessor`'s port (reproduced with a minimal 8-byte
+> module; no error is raised, the message simply never arrives).
+> `ArrayBuffer` payloads deliver fine, so the shipped implementation instead
+> sends the raw wasm bytes and has the worklet compile them itself with a
+> synchronous `new WebAssembly.Module(bytes)` before instantiating. The code
+> blocks below are left as originally planned for the historical record; see
+> the design spec's "Browser side" section and `web/worklet.js` / `web/main.js`
+> for what actually ships.
 
 - [ ] **Step 1: Write `web/worklet.js`**
 

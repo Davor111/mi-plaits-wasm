@@ -90,12 +90,22 @@ are stored as `f32` and left to the library's own clamping.
 
 ### Browser side
 
-`main.js` fetches and `WebAssembly.compile()`s the module, creates
-`new AudioContext({ sampleRate: 48000 })`, adds the worklet module, then
-`postMessage`s the compiled `WebAssembly.Module` to the processor. A
-`WebAssembly.Module` is structured-cloneable, and the worklet global scope has no
-`fetch`, so the processor instantiates it synchronously in its message handler.
-This is the standard pattern and the usual point of failure.
+`main.js` fetches the wasm bytes, creates `new AudioContext({ sampleRate: 48000
+})`, adds the worklet module, then `postMessage`s the raw `ArrayBuffer` of wasm
+bytes to the processor. The worklet global scope has no `fetch`, so the
+processor compiles the module itself, synchronously, with
+`new WebAssembly.Module(bytes)` in its message handler, then instantiates it.
+
+**Tried and rejected:** the more obvious design compiles the module once on the
+main thread (`WebAssembly.compile()`) and `postMessage`s the resulting
+`WebAssembly.Module` — it is structured-cloneable in the spec, and this is the
+pattern most examples use. In practice, Chromium silently **drops** a message
+whose payload contains a `WebAssembly.Module` when the target is an
+`AudioWorkletProcessor`'s port: the message never reaches `onmessage`, no error
+is raised anywhere, and the worklet just never becomes ready. This was
+reproduced with a minimal 8-byte module, so it is not specific to this
+project's wasm output. `ArrayBuffer` payloads deliver fine, which is why bytes,
+not a compiled `Module`, cross the port.
 
 `block_size` is fixed at 128 to match the render quantum. The context is pinned to
 48 kHz because the library's README warns that other rates sound noticeably
