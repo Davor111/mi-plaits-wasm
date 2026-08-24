@@ -85,8 +85,8 @@ overhead is irrelevant. Ranges are grouped for readability:
 - `32..` Modulations flags (0.0 false / non-zero true): 32 frequency_patched,
   33 timbre_patched, 34 morph_patched, 35 trigger_patched, 36 level_patched
 
-`engine` is clamped and cast to `usize`; the rest are stored as `f32` and left to
-the library's own clamping.
+`engine` is clamped to `0..=NUM_ENGINES-1` (0..=23) and cast to `usize`; the rest
+are stored as `f32` and left to the library's own clamping.
 
 ### Browser side
 
@@ -133,8 +133,10 @@ Rust, on the host target (the crate is `rlib` too, so tests run normally):
 - handle lifecycle: `new` then `free`; render into a freshly created handle
 - render fills the buffer: output is non-silent for a triggered engine, and finite
   (no NaN/inf) across all 24 engines
-- allocation-free render: assert no allocation occurs during `plaits_render` using
-  a counting global allocator in the test harness
+- allocation-free render: assert no allocation occurs during `plaits_render`, using
+  a counting `#[global_allocator]` declared in a dedicated integration test file
+  (a global allocator applies to the whole test binary, so it cannot share a file
+  with tests that allocate freely)
 
 Browser: load the page under Playwright, confirm the module instantiates, the
 worklet starts, and the output is non-silent (read back via an AnalyserNode).
