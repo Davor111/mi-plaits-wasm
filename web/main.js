@@ -111,7 +111,60 @@ function buildUi() {
   document.getElementById('trigger').addEventListener('pointerdown', () => send(PARAMS.MOD_TRIGGER, 1));
   document.getElementById('trigger').addEventListener('pointerup', () => send(PARAMS.MOD_TRIGGER, 0));
   document.getElementById('start').addEventListener('click', start);
+
+  document.getElementById('bench').addEventListener('click', async () => {
+    document.getElementById('bench-status').textContent = 'running…';
+    const rows = await benchmark();
+    const worst = rows.reduce((a, b) => (a.xRealtime < b.xRealtime ? a : b));
+    document.getElementById('bench-results').innerHTML =
+      '<tr><th>engine</th><th>x realtime</th><th>µs/block</th></tr>' +
+      rows.map((r) => `<tr><td>${r.engine} — ${r.name}</td><td>${r.xRealtime.toFixed(0)}</td><td>${r.usPerBlock.toFixed(2)}</td></tr>`).join('');
+    document.getElementById('bench-status').textContent =
+      `worst: ${worst.name} at ${worst.xRealtime.toFixed(0)}x realtime`;
+  });
+}
+
+// Runs on the main thread, not in the worklet: performance.now() is not
+// reliably exposed in AudioWorkletGlobalScope, and timing the audio thread
+// would perturb what it measures. Uses a second instance of the same module.
+export async function benchmark({ seconds = 2, blockSize = 128, sampleRate = 48000 } = {}) {
+  if (!wasmModule) {
+    const bytes = await (await fetch('plaits.wasm')).arrayBuffer();
+    wasmModule = await WebAssembly.compile(bytes);
+  }
+
+  const x = new WebAssembly.Instance(wasmModule, {}).exports;
+  const blocks = Math.round((sampleRate * seconds) / blockSize);
+  const results = [];
+
+  for (let engine = 0; engine < ENGINE_NAMES.length; engine++) {
+    const synth = x.plaits_new(blockSize, sampleRate);
+    x.plaits_set_param(synth, PARAMS.ENGINE, engine);
+    x.plaits_set_param(synth, PARAMS.TRIGGER_PATCHED, 1);
+    x.plaits_set_param(synth, PARAMS.LEVEL_PATCHED, 1);
+    x.plaits_set_param(synth, PARAMS.MOD_LEVEL, 1);
+
+    for (let i = 0; i < 32; i++) x.plaits_render(synth); // settle engine switch
+
+    const triggerEvery = Math.round(sampleRate / 4 / blockSize); // 4 Hz, matches the native baseline
+    const t0 = performance.now();
+    for (let b = 0; b < blocks; b++) {
+      x.plaits_set_param(synth, PARAMS.MOD_TRIGGER, b % triggerEvery < 2 ? 1 : 0);
+      x.plaits_render(synth);
+    }
+    const elapsedMs = performance.now() - t0;
+    x.plaits_free(synth);
+
+    results.push({
+      engine,
+      name: ENGINE_NAMES[engine],
+      xRealtime: (seconds * 1000) / elapsedMs,
+      usPerBlock: (elapsedMs * 1000) / blocks,
+    });
+  }
+
+  return results;
 }
 
 buildUi();
-window.plaitsDemo = { start, rms, send, PARAMS };
+window.plaitsDemo = { start, rms, send, PARAMS, benchmark };
