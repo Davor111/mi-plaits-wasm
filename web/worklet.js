@@ -1,5 +1,6 @@
-// Runs on the audio thread. Has no fetch, so the compiled WebAssembly.Module
-// arrives by postMessage and is instantiated synchronously here.
+// Runs on the audio thread. Has no fetch, and a compiled WebAssembly.Module
+// does not reliably survive this port, so raw bytes arrive by postMessage
+// instead and are compiled and instantiated synchronously here.
 
 const BLOCK = 128;
 
@@ -36,9 +37,10 @@ class PlaitsProcessor extends AudioWorkletProcessor {
     }
   }
 
-  // A Float32Array over wasm memory detaches if the memory ever grows, and a
-  // detached view reads as silence rather than throwing. Everything is
-  // allocated up front so this should never fire, but the check is cheap.
+  // A Float32Array over wasm memory detaches if the memory ever grows, and
+  // indexed reads on a detached view return undefined, producing NaN samples
+  // rather than throwing. Everything is allocated up front so this should
+  // never fire, but the check is cheap.
   refreshViews() {
     if (this.cachedBuffer !== this.memory.buffer) {
       this.cachedBuffer = this.memory.buffer;
