@@ -1,0 +1,18 @@
+[package]
+name = "mi-plaits-wasm"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mi-plaits-dsp = { path = "../mi-plaits-dsp-rs" }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
