@@ -8,6 +8,32 @@
     .row { display: grid; grid-template-columns: 10rem 1fr 3rem; gap: .5rem; align-items: center; margin: .35rem 0; }
     input[type=range] { width: 100%; }
     #status { font-family: ui-monospace, monospace; }
+
+    /* Black keys carry negative side margins so they overlap the boundary
+       between their neighbours. That keeps every key in document order and
+       avoids hand-computing absolute offsets. */
+    #keyboard {
+      display: flex;
+      align-items: flex-start;
+      margin: .75rem 0;
+      touch-action: none; /* a touch-drag should play, not scroll the page */
+      user-select: none;
+    }
+    .key { padding: 0; border: 1px solid #555; cursor: pointer; border-radius: 0 0 3px 3px; }
+    .key.white {
+      width: 24px;
+      height: 90px;
+      background: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 4px;
+      font-size: 11px;
+      font-family: ui-monospace, monospace;
+    }
+    .key.black { width: 16px; height: 55px; margin: 0 -8px; z-index: 1; background: #222; }
+    .key.white.playing { background: #8ab4d8; }
+    .key.black.playing { background: #3f6f9f; }
   </style>
 </head>
 <body>
@@ -23,8 +49,14 @@
   <div class="row"><label for="lpg">lpg colour</label><input id="lpg" data-param="LPG_COLOUR" type="range" min="0" max="1" step="0.01" value="0.5"><span id="lpg-value">0.50</span></div>
   <div class="row"><label for="mix">out / aux</label><input id="mix" type="range" min="0" max="1" step="0.01" value="0"><span></span></div>
 
+  <div id="keyboard"></div>
+
   <p><button id="trigger">trigger (hold)</button> &nbsp; output RMS: <span id="rms">0.0000</span></p>
-  <p><small>Some engines (percussive and plucked ones, e.g. bass drum/snare/hi-hat/string/modal) only make sound while "trigger" is held down — that's expected Plaits behaviour, not a broken demo.</small></p>
+  <p><small>Click and hold keys to play — the keyboard gates up to 8 voices, so the page is silent at rest.
+  White keys are also mapped to your keyboard: A S D F G H J then Q W E R T Y U I.
+  Sustained engines sound for as long as you hold each key; percussive and plucked ones (bass drum, snare,
+  hi-hat, string, modal) fire once per press and decay on their own. "trigger" plays the pitch the note
+  slider is set to, which is handy for the drum engines.</small></p>
 
   <p><button id="bench">Run benchmark</button> <span id="bench-status"></span></p>
   <table id="bench-results"></table>

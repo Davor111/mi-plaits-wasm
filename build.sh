@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the wasm module and drops it next to the demo page.
+# Builds the wasm module and drops it next to the demo page (docs/, which GitHub Pages serves).
 #
 # Homebrew's rust has no wasm std, so this uses the rustup toolchain by
 # absolute path. Override with CARGO_BIN=/path/to/cargo if your setup differs.
@@ -24,5 +24,5 @@ export RUSTC="${RUSTC:-$TOOLCHAIN_DIR/rustc}"
 export DYLD_LIBRARY_PATH="$(dirname "$TOOLCHAIN_DIR")/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
 
 "$CARGO_BIN" build --release --target wasm32-unknown-unknown
-cp target/wasm32-unknown-unknown/release/mi_plaits_wasm.wasm web/plaits.wasm
-ls -lh web/plaits.wasm
+cp target/wasm32-unknown-unknown/release/mi_plaits_wasm.wasm docs/plaits.wasm
+ls -lh docs/plaits.wasm

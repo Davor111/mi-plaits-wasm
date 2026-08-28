@@ -1,3 +1,2 @@
 /target
-web/*.wasm
-/.superpowers/
+.DS_Store
